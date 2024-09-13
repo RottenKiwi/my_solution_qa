@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "commonjs",
+        "strict": true,
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": [
+        "task1_tests/**/*", // Includes both .ts and .js files
+        "src/**/*", // If you also have a source directory
+        "playwright.config.ts" // Include your config file if it’s TypeScript
+    ],
+    "exclude": [
+        "node_modules" // Exclude node_modules to prevent unnecessary checks
+    ]
+}
