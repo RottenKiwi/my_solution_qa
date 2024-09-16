@@ -62,7 +62,7 @@ This test script automates the process of logging into an admin dashboard, revea
 # k6 Performance Testing
 
 ## Overview
-This set of performance tests uses k6 to evaluate the performance of various endpoints and methods related to the Moralis API. The tests cover the following:
+This set of performance tests uses k6 to evaluate the performance of various endpoints and methods related to the given APIs. The tests cover the following:
 
 - **Fetching NFTs**: Retrieves NFTs for a specified wallet address and checks the response.
 - **Getting Block Number from Site 1 and Site 2**: Retrieves the current block number from two different endpoints.
