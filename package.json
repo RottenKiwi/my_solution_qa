@@ -9,6 +9,8 @@
   "dependencies": {
     "2captcha": "^3.0.5-2",
     "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "k6": "^0.0.0",
     "playwright-extra": "^4.3.6",
     "playwright-extra-plugin-stealth": "^0.0.1",
     "puppeteer-extra-plugin-stealth": "^2.11.2"

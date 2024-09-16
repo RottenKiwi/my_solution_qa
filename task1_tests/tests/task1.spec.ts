@@ -2,19 +2,25 @@ import { test, expect, Browser, BrowserContext, Page } from '@playwright/test';
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import axios from 'axios';
+import dotenv from 'dotenv';
+
 
 // Use playwright-extra and apply stealth plugin
 chromium.use(StealthPlugin());
 
-// Configuration object
+// Load environment variables from .env file
+dotenv.config();
+
+// Configuration object loaded from environment variables
 const config = {
-    loginUrl: 'https://admin.moralis.io',
-    email: 'yonatanhornstein@gmail.com',
-    password: '04510451qQ',
-    incorrectEmail: 'incorrectemail@example.com',
-    incorrectPassword: 'incorrectpassword',
-    pageTimeout: 60000, // 1 minute timeout for page actions
-    apiKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjY3ODc2YzY3LWU2NTktNGIyNS1hYzdhLTY3ZjMwZGE4OTA5ZCIsIm9yZ0lkIjoiNDA4MDQ4IiwidXNlcklkIjoiNDE5Mjg4IiwidHlwZUlkIjoiOTEyNjI4Y2QtMzdmZi00NmU5LTlmYjItMGYxZjQ1MzJiZDNkIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3MjYwNjQ0MTgsImV4cCI6NDg4MTgyNDQxOH0.jbE8W2QNp01k3gWmJt9J-4nHw_4asIEkogQWz7ONyc8'
+    loginUrl: process.env.LOGIN_URL || '',
+    email: process.env.EMAIL || '',
+    password: process.env.PASSWORD || '',
+    incorrectEmail: process.env.INCORRECT_EMAIL || '',
+    incorrectPassword: process.env.INCORRECT_PASSWORD || '',
+    pageTimeout: parseInt(process.env.PAGE_TIMEOUT || '60000'),
+    walletAddress: process.env.WALLET_ADDRESS || '',
+    apiUrl: process.env.API_URL || '',
 };
 
 // Helper function to execute RPC methods
@@ -34,7 +40,6 @@ const executeRpcMethod = async (url: string, method: string, params: any[] = [])
     }
 };
 
-// Helper function to perform login
 const performLogin = async (page: Page, email: string, password: string) => {
     // Scroll down to view the elements
     await page.evaluate(() => window.scrollBy(0, 400));
@@ -62,32 +67,31 @@ const performLogin = async (page: Page, email: string, password: string) => {
     // Wait 0.7 seconds
     await page.waitForTimeout(700);
 
-    // Loop for 10 tries if login is not successful
+    // Loop for up to 10 retries if login is not successful
     for (let i = 0; i < 10; i++) {
         await page.waitForTimeout(2200); // 2.2 seconds delay between each attempt
 
-        // Check if the "Welcome Jonathan Hornstein 👋" element is visible
-        const welcomeElement = page.locator('span[data-testid="test-typography"]', { hasText: 'Welcome Jonathan Hornstein 👋' });
+        // Check if we are already on the dashboard (look for a dashboard-specific element)
+        const dashboardCheck = page.locator('span[data-testid="test-typography"]', { hasText: 'Welcome Jonathan Hornstein 👋' });
 
-        if (await welcomeElement.isVisible()) {
-            console.log('Successfully logged in and verified the welcome element.');
-            break; // Exit the loop if login is successful
+        if (await dashboardCheck.isVisible()) {
+            console.log('Successfully logged in and verified the dashboard element.');
+            break; // Exit the loop if dashboard is detected
+        }
+
+        // If login is unsuccessful, retry clicking the login button
+        const loginButton = page.locator('button[type="submit"]');
+        if (await loginButton.isVisible()) {
+            console.log(`Login attempt ${i + 1} failed. Retrying...`);
+            await loginButton.click();
         } else {
-            // If the welcome element is not visible, try clicking the login button again
-            const loginButton = page.locator('button[type="submit"]');
-            if (await loginButton.isVisible()) {
-                console.log(`Login attempt ${i + 1} failed. Retrying...`);
-                await loginButton.click();
-            } else {
-                // If the login button is no longer visible, assume we are on the dashboard
-                console.log('Login button not visible. Checking if we are on the dashboard...');
-                break;
-            }
+            console.log('Login button not visible. Checking if we are on the dashboard...');
         }
     }
 };
 
-test('Admin Login and Node Management', async () => {
+
+test('Successful Admin Login and Node Management', async () => {
     let browser: Browser | undefined;
     let context: BrowserContext | undefined;
     let page: Page | undefined;
@@ -104,8 +108,6 @@ test('Admin Login and Node Management', async () => {
 
     // Perform login
     await performLogin(page, config.email, config.password);
-
-    console.log('AFTER LOOP');
 
     // Click on the Nodes button after the loop
     const nodesButton = page.locator('button[title="Nodes"]');
@@ -164,6 +166,8 @@ test('Admin Login and Node Management', async () => {
         console.log('No existing nodes found.');
     }
 
+
+
     // Create a new node using XPath
     const createNodeButton = page.locator('xpath=//*[@id="main_top"]/main/div/div[1]/div[2]/button');
     if (await createNodeButton.isVisible()) {
@@ -191,17 +195,14 @@ test('Admin Login and Node Management', async () => {
         console.log('Network dropdown not visible.');
     }
 
-    // Click the "Create Node" button using XPath
-    const createNodeSubmitButton = page.locator('xpath=//*[@id=":rt:"]/footer/div/button');
-    if (await createNodeSubmitButton.isVisible()) {
-        await createNodeSubmitButton.click();
-        console.log('Clicked "Create Node" button.');
-    } else {
-        console.log('"Create Node" button not visible.');
-    }
-
-    // Wait for 5 seconds
     await page.waitForTimeout(5000);
+
+    const createNodeSubmitButton = page.locator('footer.mui-modal-footer button[data-testid="mui-button-primary"]');
+
+    await createNodeSubmitButton.click();
+
+    await page.waitForTimeout(5000);
+
 
     // Collect and print the endpoints using XPath
     const site1EndpointLocator = page.locator('xpath=/html/body/div[1]/div[5]/div/div/main/main/div/div[2]/section/div/div/div/div/div/div[2]/div[1]/div/div/input');
@@ -255,6 +256,45 @@ test('Admin Login and Node Management', async () => {
         }
     } else {
         console.log('Site 2 endpoint input not visible.');
+    }
+
+    // Clean up
+    await page.close();
+    await context.close();
+    await browser.close();
+});
+
+// Function to simulate incorrect node management
+test('Unsuccessful Node Management with Incorrect Site URL', async () => {
+    let browser: Browser | undefined;
+    let context: BrowserContext | undefined;
+    let page: Page | undefined;
+
+    browser = await chromium.launch({ headless: false }) as unknown as Browser;
+    context = await browser.newContext();
+    page = await context.newPage();
+
+    // Navigate to the login page
+    await page.goto(config.loginUrl);
+
+    // Perform login with correct credentials
+    await performLogin(page, config.email, config.password);
+
+    // Navigate to the Nodes page
+    const nodesButton = page.locator('button[title="Nodes"]');
+    await nodesButton.click();
+
+    // Simulate creating a node and collecting the incorrect endpoint
+    const incorrectSite1Endpoint = 'https://site1.moralis-nodes.com/sepolia/cd3a80e6165542ffb96116c0b43ff448'; // Slight alteration in the last character
+
+    console.log('Using incorrect Site 1 endpoint:', incorrectSite1Endpoint);
+
+    // Attempt RPC method calls with the incorrect endpoint
+    const blockNumberData = await executeRpcMethod(incorrectSite1Endpoint, 'eth_blockNumber');
+    if (!blockNumberData || blockNumberData.error) {
+        console.log('Error fetching block number from incorrect endpoint.');
+    } else {
+        console.log('Block number from incorrect endpoint:', blockNumberData.result);
     }
 
     // Clean up
